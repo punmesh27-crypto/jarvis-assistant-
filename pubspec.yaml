@@ -1,0 +1,31 @@
+name: jarvis_assistant
+description: "Advanced JARVIS AI Assistant - Iron Man inspired AI app (Step 1: Core UI)."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+
+  # ---------------------------------------------------------------
+  # FUTURE STEPS (intentionally NOT added yet, kept here as notes so
+  # the project structure is ready without pulling in untested code):
+  #
+  # Step 2 - Voice (speech_to_text, flutter_tts)
+  # Step 3 - Claude API (http, flutter_dotenv)
+  # Step 4 - Local chat history storage (shared_preferences or sqflite)
+  # Step 5 - Windows desktop (no extra package needed, just enable
+  #          desktop support via `flutter create --platforms=windows .`)
+  # ---------------------------------------------------------------
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
