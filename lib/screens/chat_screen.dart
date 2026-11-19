@@ -3,19 +3,8 @@ import '../models/chat_message.dart';
 import '../theme/app_theme.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/jarvis_orb.dart';
+import '../services/voice_service.dart';
 
-/// Working chat screen.
-///
-/// What IS functional right now:
-///  - Typing a message and sending it
-///  - Messages appear instantly in the list (user + a canned JARVIS reply)
-///  - The orb animates and visually reacts to "listening" state
-///  - Language selector (English / Marathi) - stores the selection only
-///
-/// What is NOT functional yet (by design, for Step 1):
-///  - The microphone button does not record or recognize speech yet.
-///    Tapping it shows an honest message instead of pretending to work.
-///  - Replies are a fixed placeholder, not real Claude AI responses.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -24,18 +13,18 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+
   final List<ChatMessage> _messages = [
     ChatMessage(
-      text:
-          "JARVIS core online. Voice recognition and Claude AI are not "
-          "connected yet in this build - that's coming in the next steps. "
-          "You can still type to me below.",
+      text: "JARVIS core online. Voice input is being connected. "
+          "Claude AI is not connected yet.",
       isUser: false,
     ),
   ];
 
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final VoiceService _voiceService = VoiceService();
 
   bool _isListening = false;
   String _language = 'English';
@@ -48,9 +37,8 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.add(ChatMessage(text: text, isUser: true));
       _messages.add(
         ChatMessage(
-          text:
-              "I received your message: \"$text\". Real AI responses "
-              "will be connected in Step 3 (Claude API integration).",
+          text: "I received your message: \"$text\". "
+              "Real AI responses will be connected in Step 3.",
           isUser: false,
         ),
       );
@@ -72,26 +60,54 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  void _onMicPressed() {
-    setState(() => _isListening = !_isListening);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppTheme.panelColor,
-        content: Text(
-          _isListening
-              ? 'Microphone UI activated (visual only). Real $_language '
-                  'speech recognition is not implemented yet - planned for Step 2.'
-              : 'Microphone deactivated.',
-          style: const TextStyle(color: AppTheme.primaryBlue),
-        ),
-      ),
-    );
-
+  Future<void> _onMicPressed() async {
     if (_isListening) {
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) setState(() => _isListening = false);
-      });
+      await _voiceService.stopListening();
+      if (mounted) setState(() => _isListening = false);
+      return;
+    }
+
+    setState(() => _isListening = true);
+
+    try {
+      await _voiceService.startListening(
+        locale: _language == 'English' ? 'en-US' : 'mr-IN',
+        onListeningChanged: (listening) {
+          if (mounted) {
+            setState(() => _isListening = listening);
+          }
+        },
+        onResult: (recognizedText) {
+          if (!mounted) return;
+
+          setState(() {
+            _controller.value = TextEditingValue(
+              text: recognizedText,
+              selection: TextSelection.collapsed(
+                offset: recognizedText.length,
+              ),
+            );
+
+            if (recognizedText.isNotEmpty) {
+              _scrollToBottom();
+            }
+          });
+        },
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() => _isListening = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppTheme.panelColor,
+          content: Text(
+            'Voice error: $error',
+            style: const TextStyle(color: AppTheme.primaryBlue),
+          ),
+        ),
+      );
     }
   }
 
@@ -103,6 +119,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _voiceService.stopListening();
+    _voiceService.stopSpeaking();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
