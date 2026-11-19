@@ -7,9 +7,18 @@ class VoiceService {
 
   bool _initialized = false;
 
-  Future<bool> initialize() async {
+  Future<bool> initialize({
+    Function(bool)? onListeningChanged,
+  }) async {
     if (_initialized) return true;
-    _initialized = await _speech.initialize();
+
+    _initialized = await _speech.initialize(
+      onStatus: (status) {
+        final listening = status == 'listening';
+        onListeningChanged?.call(listening);
+      },
+    );
+
     return _initialized;
   }
 
@@ -18,7 +27,9 @@ class VoiceService {
     required Function(String) onResult,
     required Function(bool) onListeningChanged,
   }) async {
-    final available = await initialize();
+    final available = await initialize(
+      onListeningChanged: onListeningChanged,
+    );
 
     if (!available) {
       throw Exception('Speech recognition is not available.');
@@ -27,10 +38,6 @@ class VoiceService {
     await _speech.listen(
       onResult: (result) {
         onResult(result.recognizedWords);
-      },
-      onStatus: (status) {
-        final listening = status == 'listening';
-        onListeningChanged(listening);
       },
       localeId: locale,
       listenFor: const Duration(seconds: 30),
