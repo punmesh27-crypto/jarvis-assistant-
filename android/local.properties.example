@@ -1,0 +1,8 @@
+# This file is machine-specific and should NOT be committed to GitHub.
+# Codemagic generates it automatically during the cloud build, so you
+# do not need to create it yourself for the Codemagic workflow.
+#
+# It is only needed if you ever build locally on a computer with the
+# Android SDK and Flutter SDK installed, e.g.:
+# sdk.dir=/path/to/Android/sdk
+# flutter.sdk=/path/to/flutter
