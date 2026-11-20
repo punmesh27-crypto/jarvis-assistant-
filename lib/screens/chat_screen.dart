@@ -9,7 +9,9 @@ import '../widgets/jarvis_orb.dart';
 import '../services/voice_service.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  const ChatScreen({super.key, this.selectedAI = "Auto Mode"});
+
+  final String selectedAI;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -57,7 +59,7 @@ class _ChatScreenState extends State<ChatScreen> {
           .post(
             Uri.parse('https://jarvis-assistant-t0ih.onrender.com/chat'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'message': text}),
+            body: jsonEncode({'message': text, 'provider': widget.selectedAI}),
           )
           .timeout(const Duration(seconds: 60));
 

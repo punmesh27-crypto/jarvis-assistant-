@@ -4,8 +4,15 @@ import '../widgets/jarvis_orb.dart';
 import '../widgets/hologram_interface.dart';
 import 'chat_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  String selectedAI = "Auto Mode";
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +56,36 @@ class HomeScreen extends StatelessWidget {
             ),
             const Spacer(),
             Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: DropdownButtonFormField<String>(
+                value: selectedAI,
+                dropdownColor: AppTheme.panelColor,
+                style: const TextStyle(color: AppTheme.primaryBlue),
+                decoration: const InputDecoration(
+                  labelText: "SELECT AI MODEL",
+                  labelStyle: TextStyle(color: AppTheme.mutedTextColor),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: AppTheme.primaryBlue),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: AppTheme.primaryBlue),
+                  ),
+                ),
+                items: ["Auto Mode", "ChatGPT", "Gemini", "Claude"]
+                    .map((ai) => DropdownMenuItem(
+                          value: ai,
+                          child: Text(ai),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => selectedAI = value);
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+            Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 32,
                 vertical: 24,
@@ -71,7 +108,7 @@ class HomeScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const ChatScreen(),
+                        builder: (_) => ChatScreen(selectedAI: selectedAI),
                       ),
                     );
                   },
