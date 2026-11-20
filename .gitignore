@@ -18,3 +18,10 @@ android/app/.cxx/
 
 # macOS
 .DS_Store
+# JARVIS secrets
+.env
+.env.*
+!.env.example
+
+# Backend secrets
+secrets/
