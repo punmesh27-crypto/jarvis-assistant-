@@ -1,3 +1,6 @@
+
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import '../models/chat_message.dart';
 import '../theme/app_theme.dart';
@@ -34,15 +37,8 @@ class _ChatScreenState extends State<ChatScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    final reply =
-        'I received your message: "$text". '
-        'Real AI responses will be connected in Step 3.';
-
     setState(() {
       _messages.add(ChatMessage(text: text, isUser: true));
-      _messages.add(
-        ChatMessage(text: reply, isUser: false),
-      );
     });
 
     _controller.clear();
@@ -53,6 +49,36 @@ class _ChatScreenState extends State<ChatScreen> {
     if (mounted) {
       setState(() => _isListening = false);
     }
+
+    String reply;
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('https://jarvis-assistant-t0ih.onrender.com/chat'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'message': text}),
+          )
+          .timeout(const Duration(seconds: 60));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        reply = data is Map && data['reply'] != null
+            ? data['reply'].toString()
+            : 'JARVIS received an invalid reply.';
+      } else {
+        reply = 'Backend error: ${response.statusCode}';
+      }
+    } catch (error) {
+      reply = 'Could not connect to JARVIS server. Please check your internet.';
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _messages.add(ChatMessage(text: reply, isUser: false));
+    });
+    _scrollToBottom();
 
     await _voiceService.speak(
       reply,
