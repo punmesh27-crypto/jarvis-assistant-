@@ -29,23 +29,35 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isListening = false;
   String _language = 'English';
 
-  void _sendMessage() {
+  
+     Future<void> _sendMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+
+    final reply =
+        'I received your message: "$text". '
+        'Real AI responses will be connected in Step 3.';
 
     setState(() {
       _messages.add(ChatMessage(text: text, isUser: true));
       _messages.add(
-        ChatMessage(
-          text: "I received your message: \"$text\". "
-              "Real AI responses will be connected in Step 3.",
-          isUser: false,
-        ),
+        ChatMessage(text: reply, isUser: false),
       );
     });
 
     _controller.clear();
     _scrollToBottom();
+
+    await _voiceService.stopListening();
+
+    if (mounted) {
+      setState(() => _isListening = false);
+    }
+
+    await _voiceService.speak(
+      reply,
+      locale: _language == 'English' ? 'en-US' : 'mr-IN',
+    );
   }
 
   void _scrollToBottom() {
@@ -246,3 +258,4 @@ class _MicButton extends StatelessWidget {
     );
   }
 }
+
