@@ -13,6 +13,7 @@ dependencies:
   speech_to_text: ^7.0.0
   flutter_tts: ^4.2.0
   http: ^1.2.2
+  camera: ^0.12.2
   # ---------------------------------------------------------------
   # FUTURE STEPS (intentionally NOT added yet, kept here as notes so
   # the project structure is ready without pulling in untested code):
