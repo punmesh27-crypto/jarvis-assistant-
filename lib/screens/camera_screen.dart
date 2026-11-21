@@ -1,7 +1,9 @@
+
 import 'package:camera/camera.dart';
+import 'package:flutter/material.dart';
+
 import '../services/voice_service.dart';
 import '../services/jarvis_command_service.dart';
-import 'package:flutter/material.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -12,12 +14,16 @@ class CameraScreen extends StatefulWidget {
 
 class _CameraScreenState extends State<CameraScreen> {
   CameraController? _controller;
-  final VoiceService _voiceService = VoiceService();
-  final JarvisCommandService _commandService = JarvisCommandService();
-  bool _isInitializing = true;
-  String? _error;
 
+  final VoiceService _voiceService = VoiceService();
+  final JarvisCommandService _commandService =
+      JarvisCommandService();
+
+  bool _isInitializing = true;
   bool _commandHandled = false;
+
+  String? _error;
+  String _heardWords = 'Waiting for voice...';
 
   @override
   void initState() {
@@ -25,49 +31,22 @@ class _CameraScreenState extends State<CameraScreen> {
     _startCamera();
   }
 
-  Future<void> _startVoiceCommand() async {
-    try {
-      await _voiceService.startListening(
-        locale: "en-US",
-        onResult: (words) async {
-          if (_commandHandled || !mounted) return;
-
-          final command = _commandService.parseCommand(words);
-
-          if (command == "stop_hand_interaction") {
-            _commandHandled = true;
-            await _voiceService.stopListening();
-            await _stopCamera();
-
-            if (mounted) {
-              Navigator.of(context).pop();
-            }
-          }
-        },
-        onListeningChanged: (listening) {},
-      );
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = "Voice Error: $e";
-        });
-      }
-    }
-  }
   Future<void> _startCamera() async {
     try {
       final cameras = await availableCameras();
 
       if (cameras.isEmpty) {
-        throw Exception('No camera found on this device.');
+        throw Exception('No camera found.');
       }
 
       final frontCamera = cameras.where(
-        (camera) => camera.lensDirection == CameraLensDirection.front,
+        (camera) =>
+            camera.lensDirection == CameraLensDirection.front,
       );
 
-      final selectedCamera =
-          frontCamera.isNotEmpty ? frontCamera.first : cameras.first;
+      final selectedCamera = frontCamera.isNotEmpty
+          ? frontCamera.first
+          : cameras.first;
 
       final controller = CameraController(
         selectedCamera,
@@ -86,13 +65,52 @@ class _CameraScreenState extends State<CameraScreen> {
         _controller = controller;
         _isInitializing = false;
       });
-      _startVoiceCommand();
+
+      await _startVoiceCommand();
     } catch (e) {
       if (!mounted) return;
 
       setState(() {
         _error = e.toString();
         _isInitializing = false;
+      });
+    }
+  }
+
+  Future<void> _startVoiceCommand() async {
+    try {
+      await _voiceService.startListening(
+        locale: 'en-US',
+        onResult: (words) async {
+          if (!mounted) return;
+
+          setState(() {
+            _heardWords = words;
+          });
+
+          if (_commandHandled) return;
+
+          final command =
+              _commandService.parseCommand(words);
+
+          if (command == 'stop_hand_interaction') {
+            _commandHandled = true;
+
+            await _voiceService.stopListening();
+            await _stopCamera();
+
+            if (mounted) {
+              Navigator.of(context).pop();
+            }
+          }
+        },
+        onListeningChanged: (listening) {},
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _error = 'Voice Error: $e';
       });
     }
   }
@@ -108,7 +126,7 @@ class _CameraScreenState extends State<CameraScreen> {
     });
   }
 
-   @override
+  @override
   void dispose() {
     _voiceService.stopListening();
     _controller?.dispose();
@@ -137,7 +155,9 @@ class _CameraScreenState extends State<CameraScreen> {
                     child: Text(
                       'Camera Error:\n$_error',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.redAccent),
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                      ),
                     ),
                   )
                 : controller == null
@@ -155,11 +175,23 @@ class _CameraScreenState extends State<CameraScreen> {
                               letterSpacing: 2,
                             ),
                           ),
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Text(
+                              'Heard: $_heardWords',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
                           const SizedBox(height: 20),
                           Expanded(
                             child: Center(
                               child: AspectRatio(
-                                aspectRatio: controller.value.aspectRatio,
+                                aspectRatio:
+                                    controller.value.aspectRatio,
                                 child: CameraPreview(controller),
                               ),
                             ),

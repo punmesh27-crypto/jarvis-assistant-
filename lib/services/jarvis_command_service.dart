@@ -4,12 +4,17 @@ class JarvisCommandService {
   String? parseCommand(String input) {
     final text = input.toLowerCase().trim();
 
-    if (text.contains('start hand interaction')) {
-      return 'start_hand_interaction';
+    debugPrint('JARVIS Heard: $text');
+
+    if (text.contains('stop hand interaction') ||
+        text.contains('stop interaction') ||
+        text.contains('stop camera')) {
+      return 'stop_hand_interaction';
     }
 
-    if (text.contains('stop hand interaction')) {
-      return 'stop_hand_interaction';
+    if (text.contains('start hand interaction') ||
+        text.contains('start interaction')) {
+      return 'start_hand_interaction';
     }
 
     if (text.contains('go to chat')) {
@@ -24,8 +29,6 @@ class JarvisCommandService {
   }
 
   void debugCommand(String? command) {
-    if (kDebugMode) {
-      debugPrint('JARVIS Command: $command');
-    }
+    debugPrint('JARVIS Command: $command');
   }
 }
