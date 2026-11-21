@@ -32,6 +32,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final VoiceService _voiceService = VoiceService();
 
   bool _isListening = false;
+  bool _isSending = false;
   String _language = 'English';
 
   
@@ -40,6 +41,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text.isEmpty) return;
 
     setState(() {
+   _isSending = true;
       _messages.add(ChatMessage(text: text, isUser: true));
     });
 
@@ -78,6 +80,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!mounted) return;
 
     setState(() {
+    _isSending = false;
       _messages.add(ChatMessage(text: reply, isUser: false));
     });
     _scrollToBottom();
@@ -196,8 +199,30 @@ class _ChatScreenState extends State<ChatScreen> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: _messages.length,
+              itemCount: _messages.length + (_isSending ? 1 : 0),
               itemBuilder: (context, index) {
+                if (index == _messages.length) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppTheme.primaryBlue,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          "JARVIS is thinking...",
+                          style: TextStyle(color: AppTheme.primaryBlue),
+                        ),
+                      ],
+                    ),
+                  );
+                }
                 return ChatBubble(message: _messages[index]);
               },
             ),
