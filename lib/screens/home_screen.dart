@@ -1,3 +1,5 @@
+import '../services/voice_service.dart';
+import '../services/jarvis_command_service.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/jarvis_orb.dart';
@@ -14,7 +16,65 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String selectedAI = "Auto Mode";
+  final VoiceService _voiceService = VoiceService();
+  final JarvisCommandService _commandService = JarvisCommandService();
+  bool _isListening = false;
+  bool _commandHandled = false;
 
+
+  Future<void> _startVoiceCommand() async {
+    if (_isListening) return;
+
+    _commandHandled = false;
+
+    try {
+      await _voiceService.startListening(
+        locale: "en-US",
+        onResult: (words) async {
+          if (!mounted || _commandHandled) return;
+
+          final command = _commandService.parseCommand(words);
+          if (command == null) return;
+
+          _commandHandled = true;
+          await _voiceService.stopListening();
+
+          if (!mounted) return;
+          setState(() => _isListening = false);
+
+          _commandService.debugCommand(command);
+
+          if (command == "start_hand_interaction") {
+            await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const CameraScreen(),
+              ),
+            );
+          } else if (command == "go_to_chat") {
+            await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ChatScreen(selectedAI: selectedAI),
+              ),
+            );
+          } else if (command == "sleep_mode") {
+            await _voiceService.stopListening();
+          }
+        },
+        onListeningChanged: (listening) {
+          if (mounted) {
+            setState(() => _isListening = listening);
+          }
+        },
+      );
+    } catch (error) {
+      if (mounted) {
+        setState(() => _isListening = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Voice error: $error")),
+        );
+      }
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,8 +109,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 fit: StackFit.expand,
                 children: [
                   const HologramInterface(),
-                  const Center(
-                    child: JarvisOrb(size: 180),
+                  Center(
+                    child: GestureDetector(
+                      onTap: _startVoiceCommand,
+                      child: JarvisOrb(
+                        size: 180,
+                        isListening: _isListening,
+                      ),
+                    ),
                   ),
                 ],
               ),
