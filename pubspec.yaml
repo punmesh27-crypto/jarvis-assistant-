@@ -14,6 +14,7 @@ dependencies:
   flutter_tts: ^4.2.0
   http: ^1.2.2
   camera: ^0.12.2
+  shared_preferences: ^2.5.3
   # ---------------------------------------------------------------
   # FUTURE STEPS (intentionally NOT added yet, kept here as notes so
   # the project structure is ready without pulling in untested code):
