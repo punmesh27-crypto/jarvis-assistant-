@@ -1,8 +1,14 @@
+
 const http = require("http");
+const { GoogleGenAI } = require("@google/genai");
 
 const PORT = process.env.PORT || 3000;
 
-const server = http.createServer((req, res) => {
+const apiKey = process.env.GEMINI_API_KEY;
+
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+
+const server = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -21,10 +27,64 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.method === "POST" && req.url === "/chat") {
-    res.writeHead(200);
-    return res.end(JSON.stringify({
-      reply: "JARVIS Backend is ready."
-    }));
+    try {
+      if (!ai) {
+        res.writeHead(500);
+        return res.end(JSON.stringify({
+          error: "Gemini API key is not configured."
+        }));
+      }
+
+      let body = "";
+
+      req.on("data", chunk => {
+        body += chunk;
+        if (body.length > 100000) {
+          req.destroy();
+        }
+      });
+
+      await new Promise((resolve, reject) => {
+        req.on("end", resolve);
+        req.on("error", reject);
+      });
+
+      const data = JSON.parse(body);
+      const message = data.message;
+
+      if (typeof message !== "string" || !message.trim()) {
+        res.writeHead(400);
+        return res.end(JSON.stringify({
+          error: "Message is required."
+        }));
+      }
+
+      const provider = data.provider || "Auto Mode";
+
+      if (provider !== "Auto Mode" && provider !== "Gemini") {
+        res.writeHead(400);
+        return res.end(JSON.stringify({
+          error: "This AI provider is not configured yet."
+        }));
+      }
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: message
+      });
+
+      res.writeHead(200);
+      return res.end(JSON.stringify({
+        reply: response.text || "JARVIS could not generate a reply."
+      }));
+
+    } catch (error) {
+      console.error("Gemini error:", error.message);
+      res.writeHead(500);
+      return res.end(JSON.stringify({
+        error: "JARVIS AI could not process the request."
+      }));
+    }
   }
 
   res.writeHead(404);
@@ -34,3 +94,4 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`JARVIS running on port ${PORT}`);
 });
+

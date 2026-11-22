@@ -8,5 +8,8 @@
     "start": "node server.js"
   },
   "keywords": [],
-  "type": "commonjs"
+  "type": "commonjs",
+  "dependencies": {
+    "@google/genai": "^3.6.1"
+  }
 }
