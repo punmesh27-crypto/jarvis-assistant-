@@ -68,6 +68,28 @@ const server = http.createServer(async (req, res) => {
         }));
       }
 
+      const history = Array.isArray(data.history)
+        ? data.history.slice(-12)
+            .filter(item =>
+              item &&
+              typeof item.text === "string" &&
+              item.text.trim() &&
+              (item.role === "user" || item.role === "model")
+            )
+            .map(item => ({
+              role: item.role,
+              parts: [{ text: item.text.slice(0, 4000) }]
+            }))
+        : [];
+
+      const contents = [
+        ...history,
+        {
+          role: "user",
+          parts: [{ text: message }]
+        }
+      ];
+
       let response;
 let lastError;
 
@@ -75,7 +97,7 @@ for (let attempt = 1; attempt <= 3; attempt++) {
   try {
     response = await ai.models.generateContent({
       model: "gemini-3.5-flash-lite",
-      contents: message
+      contents: contents
     });
 
     break;

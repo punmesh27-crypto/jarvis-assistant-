@@ -189,6 +189,18 @@ class _ChatScreenState extends State<ChatScreen> {
             body: jsonEncode({
               'message': text,
               'provider': widget.selectedAI,
+              'history': _messages
+                  .take(_messages.length - 1)
+                  .toList()
+                  .reversed
+                  .take(12)
+                  .toList()
+                  .reversed
+                  .map((item) => {
+                        'role': item.isUser ? 'user' : 'model',
+                        'text': item.text,
+                      })
+                  .toList(),
             }),
           )
           .timeout(const Duration(seconds: 60));
