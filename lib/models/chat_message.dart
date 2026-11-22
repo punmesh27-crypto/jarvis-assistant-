@@ -1,6 +1,4 @@
-/// Simple data model for a single chat message.
-/// Kept intentionally minimal in Step 1 - no persistence yet.
-/// Step 4 will add saving/loading this model to local storage.
+
 class ChatMessage {
   final String text;
   final bool isUser;
@@ -11,4 +9,25 @@ class ChatMessage {
     required this.isUser,
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
+
+  Map<String, dynamic> toJson() {
+    return {
+      'text': text,
+      'isUser': isUser,
+      'timestamp': timestamp.toIso8601String(),
+    };
+  }
+
+  factory ChatMessage.fromJson(Map<String, dynamic> json) {
+    return ChatMessage(
+      text: json['text']?.toString() ?? '',
+      isUser: json['isUser'] == true,
+      timestamp: DateTime.tryParse(
+            json['timestamp']?.toString() ?? '',
+          ) ??
+          DateTime.now(),
+    );
+  }
 }
+
+
