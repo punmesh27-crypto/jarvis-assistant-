@@ -22,7 +22,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _commandHandled = false;
 
 
-  Future<void> _startVoiceCommand() async {
+  Future<void> _startVoiceCommand({
+    bool waitingForWakeWord = true,
+  }) async {
     if (_isListening) return;
 
     _commandHandled = false;
@@ -32,6 +34,23 @@ class _HomeScreenState extends State<HomeScreen> {
         locale: "en-US",
         onResult: (words) async {
           if (!mounted || _commandHandled) return;
+
+          if (waitingForWakeWord) {
+            if (!_commandService.isWakeWord(words)) return;
+
+            _commandHandled = true;
+            await _voiceService.stopListening();
+
+            if (!mounted) return;
+            setState(() => _isListening = false);
+
+            await _voiceService.speak("Yes?", locale: "en-US");
+
+            if (mounted) {
+              await _startVoiceCommand(waitingForWakeWord: false);
+            }
+            return;
+          }
 
           final command = _commandService.parseCommand(words);
           if (command == null) return;

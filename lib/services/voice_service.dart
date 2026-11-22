@@ -63,6 +63,7 @@ class VoiceService {
   }) async {
     if (text.trim().isEmpty) return;
 
+    await _tts.awaitSpeakCompletion(true);
     await _tts.setLanguage(locale);
     await _tts.setSpeechRate(0.48);
     await _tts.setPitch(1.0);

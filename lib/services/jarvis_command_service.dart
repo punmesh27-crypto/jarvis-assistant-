@@ -1,6 +1,11 @@
 import 'package:flutter/foundation.dart';
 
 class JarvisCommandService {
+  bool isWakeWord(String input) {
+    final text = input.toLowerCase().trim();
+    return RegExp(r"\bhey\s+jarvis\b").hasMatch(text);
+  }
+
   String? parseCommand(String input) {
     final text = input.toLowerCase().trim();
 
