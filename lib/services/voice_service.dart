@@ -17,6 +17,9 @@ class VoiceService {
         final listening = status == 'listening';
         onListeningChanged?.call(listening);
       },
+      onError: (error) {
+        _initialized = false;
+      },
     );
 
     return _initialized;
@@ -27,6 +30,8 @@ class VoiceService {
     required Function(String) onResult,
     required Function(bool) onListeningChanged,
   }) async {
+    if (_speech.isListening) return;
+
     final available = await initialize(
       onListeningChanged: onListeningChanged,
     );
