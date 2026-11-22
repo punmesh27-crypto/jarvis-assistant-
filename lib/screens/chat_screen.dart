@@ -39,6 +39,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   bool _isListening = false;
   bool _isSending = false;
+  bool _voiceConversationEnabled = false;
+  bool _isConversationStarting = false;
   String _language = 'English';
 
   @override
@@ -236,6 +238,61 @@ class _ChatScreenState extends State<ChatScreen> {
       reply,
       locale: _language == 'English' ? 'en-US' : 'mr-IN',
     );
+
+    if (mounted && _voiceConversationEnabled) {
+      await _listenForConversation();
+    }
+  }
+
+  Future<void> _startVoiceConversation() async {
+    if (_voiceConversationEnabled || _isSending) return;
+    setState(() => _voiceConversationEnabled = true);
+    await _listenForConversation();
+  }
+
+  Future<void> _stopVoiceConversation() async {
+    setState(() => _voiceConversationEnabled = false);
+    await _voiceService.stopListening();
+    await _voiceService.stopSpeaking();
+    if (mounted) {
+      setState(() {
+        _isListening = false;
+        _isConversationStarting = false;
+      });
+    }
+  }
+
+  Future<void> _listenForConversation() async {
+    if (!mounted || !_voiceConversationEnabled || _isSending || _isConversationStarting || _voiceService.isListening) return;
+    _isConversationStarting = true;
+    try {
+      await _voiceService.startListening(
+        locale: _language == "English" ? "en-US" : "mr-IN",
+        onListeningChanged: (listening) {
+          if (mounted) setState(() => _isListening = listening);
+        },
+        onResult: (_) {},
+        onFinalResult: (recognizedText) {
+          _handleConversationResult(recognizedText);
+        },
+      );
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _voiceConversationEnabled = false;
+          _isListening = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Voice conversation error: $error")));
+      }
+    } finally {
+      _isConversationStarting = false;
+    }
+  }
+
+  Future<void> _handleConversationResult(String recognizedText) async {
+    if (!mounted || !_voiceConversationEnabled || _isSending || recognizedText.trim().isEmpty) return;
+    _controller.text = recognizedText.trim();
+    await _sendMessage();
   }
 
   void _scrollToBottom() {
@@ -348,6 +405,20 @@ class _ChatScreenState extends State<ChatScreen> {
                 color: AppTheme.primaryBlue,
                 fontWeight: FontWeight.bold,
               ),
+            ),
+          ),
+          IconButton(
+            tooltip: _voiceConversationEnabled ? "Stop Voice Conversation" : "Start Voice Conversation",
+            onPressed: _voiceConversationEnabled
+                ? _stopVoiceConversation
+                : _startVoiceConversation,
+            icon: Icon(
+              _voiceConversationEnabled
+                  ? Icons.stop_circle_outlined
+                  : Icons.record_voice_over,
+              color: _voiceConversationEnabled
+                  ? Colors.redAccent
+                  : AppTheme.primaryBlue,
             ),
           ),
           const SizedBox(width: 8),

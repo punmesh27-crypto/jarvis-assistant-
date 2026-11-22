@@ -29,6 +29,7 @@ class VoiceService {
     String locale = 'en-US',
     required Function(String) onResult,
     required Function(bool) onListeningChanged,
+    Function(String)? onFinalResult,
   }) async {
     if (_speech.isListening) return;
 
@@ -43,6 +44,9 @@ class VoiceService {
     await _speech.listen(
       onResult: (result) {
         onResult(result.recognizedWords);
+        if (result.finalResult) {
+          onFinalResult?.call(result.recognizedWords);
+        }
       },
       localeId: locale,
       listenFor: const Duration(seconds: 30),
