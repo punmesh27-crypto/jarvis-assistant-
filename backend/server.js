@@ -76,18 +76,36 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "POST" && req.url === "/chat") {
     try {
       let body = "";
+      let bodyBytes = 0;
+      let tooLarge = false;
 
       req.on("data", chunk => {
-        body += chunk;
-        if (body.length > 100000) {
-          req.destroy();
+        if (tooLarge) return;
+
+        bodyBytes += chunk.length;
+
+        if (bodyBytes > 100000) {
+          tooLarge = true;
+          body = "";
+          return;
         }
+
+        body += chunk;
       });
 
       await new Promise((resolve, reject) => {
         req.on("end", resolve);
         req.on("error", reject);
       });
+
+      if (tooLarge) {
+        res.writeHead(413, {
+          "Content-Type": "application/json"
+        });
+        return res.end(JSON.stringify({
+          error: "Request body is too large. Maximum size is 100 KB."
+        }));
+      }
 
       const data = JSON.parse(body);
       const message = data.message;
