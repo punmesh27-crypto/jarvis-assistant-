@@ -68,10 +68,40 @@ const server = http.createServer(async (req, res) => {
         }));
       }
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.8-flash",
-        contents: message
-      });
+      let response;
+let lastError;
+
+for (let attempt = 1; attempt <= 3; attempt++) {
+  try {
+    response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: message
+    });
+
+    break;
+  } catch (error) {
+    lastError = error;
+
+    const isTemporaryError =
+      error.status === 503 ||
+      error.status === 429 ||
+      error.status >= 500;
+
+    if (!isTemporaryError || attempt === 3) {
+      throw error;
+    }
+
+    console.log(`Gemini retry attempt ${attempt + 1}...`);
+
+    await new Promise(resolve =>
+      setTimeout(resolve, attempt * 2000)
+    );
+  }
+}
+
+if (!response) {
+  throw lastError;
+}
 
       res.writeHead(200);
       return res.end(JSON.stringify({
