@@ -22,7 +22,10 @@ class JarvisCommandService {
       return 'start_hand_interaction';
     }
 
-    if (text.contains('go to chat')) {
+    if (text.contains('go to chat') ||
+        text.contains('open chat') ||
+        text.contains('start chat') ||
+        text.contains('show chat')) {
       return 'go_to_chat';
     }
 
