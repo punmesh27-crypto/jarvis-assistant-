@@ -97,6 +97,17 @@ class _OrbPainter extends CustomPainter {
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30);
     canvas.drawCircle(center, maxRadius * (0.75 + pulse * 0.1), glowPaint);
 
+    // Stronger Neon Glow
+    final neonPaint = Paint()
+      ..color = glowColor.withOpacity(0.22 + pulse * 0.18)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18);
+
+    canvas.drawCircle(
+      center,
+      maxRadius * (0.68 + pulse * 0.04),
+      neonPaint,
+    );
+
     // Core sphere gradient
     final corePaint = Paint()
       ..shader = RadialGradient(
@@ -109,10 +120,63 @@ class _OrbPainter extends CustomPainter {
       ).createShader(Rect.fromCircle(center: center, radius: maxRadius * 0.55));
     canvas.drawCircle(center, maxRadius * 0.55, corePaint);
 
+    // Outer Energy Ring
+    final energyPaint = Paint()
+      ..color = glowColor.withOpacity(0.75 + pulse * 0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+
+    canvas.drawCircle(
+      center,
+      maxRadius * (0.98 + pulse * 0.015),
+      energyPaint,
+    );
+
     // Rotating rings
     _drawRing(canvas, center, maxRadius * 0.95, rotation, 0.5, glowColor);
     _drawRing(canvas, center, maxRadius * 0.78, -rotation * 1.3, 0.35, glowColor);
     _drawRing(canvas, center, maxRadius * 0.62, rotation * 0.7, 0.6, glowColor);
+
+    // Moving Scanner Arc
+    final scannerPaint = Paint()
+      ..color = Colors.white.withOpacity(0.8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+
+    final scannerRect = Rect.fromCircle(
+      center: center,
+      radius: maxRadius * 0.86,
+    );
+
+    canvas.drawArc(
+      scannerRect,
+      rotation,
+      math.pi * 0.32,
+      false,
+      scannerPaint,
+    );
+
+    // Floating Particles
+    final particlePaint = Paint()
+      ..color = Colors.white.withOpacity(0.65 + pulse * 0.3)
+      ..style = PaintingStyle.fill;
+
+    for (int i = 0; i < 12; i++) {
+      final angle = (2 * math.pi * i / 12) + rotation * 0.35;
+      final orbitRadius = maxRadius * (0.72 + (i % 3) * 0.07);
+      final particle = Offset(
+        center.dx + math.cos(angle) * orbitRadius,
+        center.dy + math.sin(angle) * orbitRadius,
+      );
+
+      canvas.drawCircle(
+        particle,
+        1.5 + (i % 3) * 0.5,
+        particlePaint,
+      );
+    }
 
     // Bright center dot
     final dotPaint = Paint()..color = Colors.white.withOpacity(0.9);
