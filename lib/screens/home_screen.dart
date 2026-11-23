@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/jarvis_orb.dart';
 import '../widgets/hologram_interface.dart';
+import '../widgets/jarvis_3d_hologram.dart';
 import 'chat_screen.dart';
 import 'camera_screen.dart';
 
@@ -128,6 +129,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 fit: StackFit.expand,
                 children: [
                   const HologramInterface(),
+                  const Positioned.fill(
+                    child: Jarvis3DHologram(),
+                  ),
                   Center(
                     child: GestureDetector(
                       onTap: _startVoiceCommand,

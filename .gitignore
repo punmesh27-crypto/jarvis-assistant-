@@ -25,3 +25,10 @@ android/app/.cxx/
 
 # Backend secrets
 secrets/
+
+# Local backups and dependencies (keep files safely, do not commit)
+*.backup
+*.before-*
+*-backup
+*.pre-*
+backend/node_modules/
