@@ -26,6 +26,9 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _showCursor = false;
   bool _wasPinching = false;
   int _selectionCount = 0;
+  double? _lastSwipeX;
+  DateTime? _lastSwipeTime;
+  String _swipeDirection = "";
 
   final VoiceService _voiceService = VoiceService();
   final JarvisCommandService _commandService =
@@ -64,8 +67,13 @@ class _CameraScreenState extends State<CameraScreen> {
     final wasPinching = _wasPinching;
     _wasPinching = false;
     _showCursor = false;
+    if (hands.isEmpty || (hands.isNotEmpty && hands.first.landmarks.length >= 21 && !(hands.first.landmarks[8].y < hands.first.landmarks[6].y && hands.first.landmarks[12].y < hands.first.landmarks[10].y && hands.first.landmarks[16].y < hands.first.landmarks[14].y && hands.first.landmarks[20].y < hands.first.landmarks[18].y))) {
+      _lastSwipeX = null;
+      _lastSwipeTime = null;
+    }
     if (hands.isNotEmpty && hands.first.landmarks.length >= 21) {
       final points = hands.first.landmarks;
+      final palmX = points[9].x;
       final indexUp = points[8].y < points[6].y;
       final middleUp = points[12].y < points[10].y;
       final ringUp = points[16].y < points[14].y;
@@ -83,10 +91,28 @@ class _CameraScreenState extends State<CameraScreen> {
         _cursorY = points[8].y.clamp(0.0, 1.0);
         _showCursor = true;
       } else if (indexUp && middleUp && ringUp && pinkyUp) {
-        status = "OPEN PALM - Active";
+        final now = DateTime.now();
+        if (_lastSwipeX == null || _lastSwipeTime == null) {
+          _lastSwipeX = palmX;
+          _lastSwipeTime = now;
+        } else {
+          final elapsed = now.difference(_lastSwipeTime!).inMilliseconds;
+          final movement = palmX - _lastSwipeX!;
+          if (elapsed > 700) {
+            _lastSwipeX = palmX;
+            _lastSwipeTime = now;
+          } else if (elapsed >= 80 && movement.abs() >= 0.18) {
+            _swipeDirection = movement < 0 ? "LEFT" : "RIGHT";
+            status = "SWIPE $_swipeDirection";
+            _lastSwipeX = null;
+            _lastSwipeTime = null;
+          } else {
+            status = "OPEN PALM - Active";
+          }
+        }
       }
     }
-    if (status != _gestureStatus || status == "POINT FINGER - Cursor" || (status == "PINCH - Select" && !wasPinching)) {
+    if (status != _gestureStatus || status == "POINT FINGER - Cursor" || status.startsWith("SWIPE ") || (status == "PINCH - Select" && !wasPinching)) {
       setState(() => _gestureStatus = status);
     }
   }
