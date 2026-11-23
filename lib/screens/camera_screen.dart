@@ -24,6 +24,8 @@ class _CameraScreenState extends State<CameraScreen> {
   double _cursorX = 0.5;
   double _cursorY = 0.5;
   bool _showCursor = false;
+  bool _wasPinching = false;
+  int _selectionCount = 0;
 
   final VoiceService _voiceService = VoiceService();
   final JarvisCommandService _commandService =
@@ -59,6 +61,8 @@ class _CameraScreenState extends State<CameraScreen> {
   void _onHandLandmarks(List<Hand> hands) {
     if (!mounted) return;
     String status = "Show your hand";
+    final wasPinching = _wasPinching;
+    _wasPinching = false;
     _showCursor = false;
     if (hands.isNotEmpty && hands.first.landmarks.length >= 21) {
       final points = hands.first.landmarks;
@@ -71,6 +75,8 @@ class _CameraScreenState extends State<CameraScreen> {
       final isPinching = dx * dx + dy * dy < 0.0036;
       if (isPinching) {
         status = "PINCH - Select";
+        if (!wasPinching) _selectionCount++;
+        _wasPinching = true;
       } else if (indexUp && !middleUp && !ringUp && !pinkyUp) {
         status = "POINT FINGER - Cursor";
         _cursorX = (1.0 - points[8].x).clamp(0.0, 1.0);
@@ -80,7 +86,7 @@ class _CameraScreenState extends State<CameraScreen> {
         status = "OPEN PALM - Active";
       }
     }
-    if (status != _gestureStatus || status == "POINT FINGER - Cursor") {
+    if (status != _gestureStatus || status == "POINT FINGER - Cursor" || (status == "PINCH - Select" && !wasPinching)) {
       setState(() => _gestureStatus = status);
     }
   }
@@ -277,7 +283,7 @@ class _CameraScreenState extends State<CameraScreen> {
                           Padding(
                             padding: const EdgeInsets.all(12),
                             child: Text(
-                              'Gesture: $_gestureStatus\nHeard: $_heardWords',
+                              'Gesture: $_gestureStatus\nSelections: $_selectionCount\nHeard: $_heardWords',
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 color: Colors.white,
