@@ -21,6 +21,9 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _isProcessingFrame = false;
   DateTime _lastProcessedFrame = DateTime.fromMillisecondsSinceEpoch(0);
   String _gestureStatus = "Show your hand";
+  double _cursorX = 0.5;
+  double _cursorY = 0.5;
+  bool _showCursor = false;
 
   final VoiceService _voiceService = VoiceService();
   final JarvisCommandService _commandService =
@@ -56,6 +59,7 @@ class _CameraScreenState extends State<CameraScreen> {
   void _onHandLandmarks(List<Hand> hands) {
     if (!mounted) return;
     String status = "Show your hand";
+    _showCursor = false;
     if (hands.isNotEmpty && hands.first.landmarks.length >= 21) {
       final points = hands.first.landmarks;
       final indexUp = points[8].y < points[6].y;
@@ -69,11 +73,14 @@ class _CameraScreenState extends State<CameraScreen> {
         status = "PINCH - Select";
       } else if (indexUp && !middleUp && !ringUp && !pinkyUp) {
         status = "POINT FINGER - Cursor";
+        _cursorX = (1.0 - points[8].x).clamp(0.0, 1.0);
+        _cursorY = points[8].y.clamp(0.0, 1.0);
+        _showCursor = true;
       } else if (indexUp && middleUp && ringUp && pinkyUp) {
         status = "OPEN PALM - Active";
       }
     }
-    if (status != _gestureStatus) {
+    if (status != _gestureStatus || status == "POINT FINGER - Cursor") {
       setState(() => _gestureStatus = status);
     }
   }
@@ -284,7 +291,24 @@ class _CameraScreenState extends State<CameraScreen> {
                               child: AspectRatio(
                                 aspectRatio:
                                     controller.value.aspectRatio,
-                                child: CameraPreview(controller),
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    CameraPreview(controller),
+                                    if (_showCursor)
+                                      Align(
+                                        alignment: Alignment(
+                                          _cursorX * 2 - 1,
+                                          _cursorY * 2 - 1,
+                                        ),
+                                        child: const Icon(
+                                          Icons.my_location,
+                                          color: Colors.cyanAccent,
+                                          size: 30,
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
