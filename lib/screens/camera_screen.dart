@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:hand_landmarker/hand_landmarker.dart';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +16,11 @@ class CameraScreen extends StatefulWidget {
 
 class _CameraScreenState extends State<CameraScreen> {
   CameraController? _controller;
+  HandLandmarkerPlugin? _handLandmarker;
+  StreamSubscription<List<Hand>>? _handSubscription;
+  bool _isProcessingFrame = false;
+  DateTime _lastProcessedFrame = DateTime.fromMillisecondsSinceEpoch(0);
+  String _gestureStatus = "Show your hand";
 
   final VoiceService _voiceService = VoiceService();
   final JarvisCommandService _commandService =
@@ -31,49 +38,108 @@ class _CameraScreenState extends State<CameraScreen> {
     _startCamera();
   }
 
+  Future<void> _initializeHandLandmarker() async {
+    _handLandmarker = HandLandmarkerPlugin.create(
+      numHands: 1,
+      minHandDetectionConfidence: 0.7,
+      delegate: HandLandmarkerDelegate.cpu,
+    );
+
+    _handSubscription = _handLandmarker!.landmarkStream.listen(
+      _onHandLandmarks,
+      onError: (error) {
+        debugPrint("Hand tracking error: $error");
+      },
+    );
+  }
+
+  void _onHandLandmarks(List<Hand> hands) {
+    if (!mounted) return;
+    String status = "Show your hand";
+    if (hands.isNotEmpty && hands.first.landmarks.length >= 21) {
+      final points = hands.first.landmarks;
+      final indexUp = points[8].y < points[6].y;
+      final middleUp = points[12].y < points[10].y;
+      final ringUp = points[16].y < points[14].y;
+      final pinkyUp = points[20].y < points[18].y;
+      final dx = points[4].x - points[8].x;
+      final dy = points[4].y - points[8].y;
+      final isPinching = dx * dx + dy * dy < 0.0036;
+      if (isPinching) {
+        status = "PINCH - Select";
+      } else if (indexUp && !middleUp && !ringUp && !pinkyUp) {
+        status = "POINT FINGER - Cursor";
+      } else if (indexUp && middleUp && ringUp && pinkyUp) {
+        status = "OPEN PALM - Active";
+      }
+    }
+    if (status != _gestureStatus) {
+      setState(() => _gestureStatus = status);
+    }
+  }
+
   Future<void> _startCamera() async {
     try {
       final cameras = await availableCameras();
-
       if (cameras.isEmpty) {
-        throw Exception('No camera found.');
+        throw Exception("No camera found.");
       }
 
       final frontCamera = cameras.where(
-        (camera) =>
-            camera.lensDirection == CameraLensDirection.front,
+        (camera) => camera.lensDirection == CameraLensDirection.front,
       );
-
       final selectedCamera = frontCamera.isNotEmpty
           ? frontCamera.first
           : cameras.first;
 
       final controller = CameraController(
         selectedCamera,
-        ResolutionPreset.medium,
+        ResolutionPreset.low,
         enableAudio: false,
       );
 
+      _controller = controller;
       await controller.initialize();
 
       if (!mounted) {
-        await controller.dispose();
+        await _releaseCameraResources();
         return;
       }
 
       setState(() {
-        _controller = controller;
         _isInitializing = false;
       });
 
+      await _initializeHandLandmarker();
+      await controller.startImageStream(_processCameraImage);
       await _startVoiceCommand();
     } catch (e) {
+      await _releaseCameraResources();
       if (!mounted) return;
-
       setState(() {
         _error = e.toString();
         _isInitializing = false;
       });
+    }
+  }
+
+  void _processCameraImage(CameraImage image) {
+    final landmarker = _handLandmarker;
+    final controller = _controller;
+    if (landmarker == null || controller == null || _isProcessingFrame) return;
+    final now = DateTime.now();
+    if (now.difference(_lastProcessedFrame).inMilliseconds < 150) return;
+    _lastProcessedFrame = now;
+    _isProcessingFrame = true;
+    try {
+      landmarker.processFrame(
+        image,
+        controller.description.sensorOrientation,
+      );
+    } catch (e) {
+      debugPrint("Frame processing error: $e");
+    } finally {
+      _isProcessingFrame = false;
     }
   }
 
@@ -115,21 +181,47 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
+  Future<void> _releaseCameraResources() async {
+    final controller = _controller;
+    final subscription = _handSubscription;
+    final landmarker = _handLandmarker;
+
+    _controller = null;
+    _handSubscription = null;
+    _handLandmarker = null;
+
+    if (controller != null) {
+      try {
+        if (controller.value.isStreamingImages) {
+          await controller.stopImageStream();
+        }
+      } catch (e) {
+        debugPrint("Camera stream stop error: $e");
+      }
+    }
+
+    await subscription?.cancel();
+    landmarker?.dispose();
+
+    if (controller != null) {
+      await controller.dispose();
+    }
+  }
+
   Future<void> _stopCamera() async {
     await _voiceService.stopListening();
-    await _controller?.dispose();
-
+    await _releaseCameraResources();
     if (!mounted) return;
-
     setState(() {
       _controller = null;
+      _gestureStatus = "Show your hand";
     });
   }
 
   @override
   void dispose() {
     _voiceService.stopListening();
-    _controller?.dispose();
+    unawaited(_releaseCameraResources());
     super.dispose();
   }
 
@@ -153,7 +245,7 @@ class _CameraScreenState extends State<CameraScreen> {
                 ? Padding(
                     padding: const EdgeInsets.all(24),
                     child: Text(
-                      'Camera Error:\n$_error',
+                        'Camera Error:\n$_error',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.redAccent,
@@ -178,7 +270,7 @@ class _CameraScreenState extends State<CameraScreen> {
                           Padding(
                             padding: const EdgeInsets.all(12),
                             child: Text(
-                              'Heard: $_heardWords',
+                              'Gesture: $_gestureStatus\nHeard: $_heardWords',
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 color: Colors.white,

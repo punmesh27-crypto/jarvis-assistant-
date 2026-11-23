@@ -16,6 +16,7 @@ dependencies:
   camera: ^0.12.2
   shared_preferences: ^2.5.3
   model_viewer_plus: ^1.10.0
+  hand_landmarker: ^3.1.0
   # ---------------------------------------------------------------
   # FUTURE STEPS (intentionally NOT added yet, kept here as notes so
   # the project structure is ready without pulling in untested code):
