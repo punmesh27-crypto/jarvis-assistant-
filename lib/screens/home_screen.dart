@@ -21,7 +21,38 @@ class _HomeScreenState extends State<HomeScreen> {
   final JarvisCommandService _commandService = JarvisCommandService();
   bool _isListening = false;
   bool _commandHandled = false;
+  String _modelUrl = "https://storage.googleapis.com/three-ws-avatar-reconstructions/raw-meshes/trellis/6b79132c-95fc-42b0-8c87-3f220f1cab8a.glb";
 
+
+  void _handleGestureSelection(int index) {
+    if (index == 0) {
+      showDialog(
+        context: context,
+        builder: (dialogContext) => SimpleDialog(
+          title: const Text("SELECT AI MODEL"),
+          children: ["Auto Mode", "ChatGPT", "Gemini", "Claude"]
+              .map((ai) => SimpleDialogOption(
+                    onPressed: () {
+                      setState(() => selectedAI = ai);
+                      Navigator.pop(dialogContext);
+                    },
+                    child: Text(ai),
+                  ))
+              .toList(),
+        ),
+      );
+    } else if (index == 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Camera Interaction is active")),
+      );
+    } else if (index == 2) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(selectedAI: selectedAI),
+        ),
+      );
+    }
+  }
 
   Future<void> _startVoiceCommand({
     bool waitingForWakeWord = true,
@@ -67,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
           if (command == "start_hand_interaction") {
             await Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => const CameraScreen(),
+                builder: (_) => CameraScreen(onSelect: _handleGestureSelection),
               ),
             );
           } else if (command == "go_to_chat") {
@@ -129,8 +160,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 fit: StackFit.expand,
                 children: [
                   const HologramInterface(),
-                  const Positioned.fill(
-                    child: Jarvis3DHologram(),
+                  Positioned.fill(
+                    child: Jarvis3DHologram(modelUrl: _modelUrl),
                   ),
                   Center(
                     child: GestureDetector(
@@ -184,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const CameraScreen(),
+                        builder: (_) => CameraScreen(onSelect: _handleGestureSelection),
                       ),
                     );
                   },

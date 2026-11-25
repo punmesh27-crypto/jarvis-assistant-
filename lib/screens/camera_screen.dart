@@ -8,7 +8,10 @@ import '../services/voice_service.dart';
 import '../services/jarvis_command_service.dart';
 
 class CameraScreen extends StatefulWidget {
-  const CameraScreen({super.key});
+  final ValueChanged<String>? onSwipe;
+  final ValueChanged<int>? onSelect;
+
+  const CameraScreen({super.key, this.onSwipe, this.onSelect});
 
   @override
   State<CameraScreen> createState() => _CameraScreenState();
@@ -29,6 +32,8 @@ class _CameraScreenState extends State<CameraScreen> {
   double? _lastSwipeX;
   DateTime? _lastSwipeTime;
   String _swipeDirection = "";
+  int _menuIndex = 0;
+  final List<String> _menuOptions = ["AI MODEL", "CAMERA INTERACTION", "CHAT INTERFACE"];
 
   final VoiceService _voiceService = VoiceService();
   final JarvisCommandService _commandService =
@@ -64,6 +69,7 @@ class _CameraScreenState extends State<CameraScreen> {
   void _onHandLandmarks(List<Hand> hands) {
     if (!mounted) return;
     String status = "Show your hand";
+    bool menuChanged = false;
     final wasPinching = _wasPinching;
     _wasPinching = false;
     _showCursor = false;
@@ -83,7 +89,7 @@ class _CameraScreenState extends State<CameraScreen> {
       final isPinching = dx * dx + dy * dy < 0.0036;
       if (isPinching) {
         status = "PINCH - Select";
-        if (!wasPinching) _selectionCount++;
+        if (!wasPinching) { _selectionCount++; widget.onSelect?.call(_menuIndex); }
         _wasPinching = true;
       } else if (indexUp && !middleUp && !ringUp && !pinkyUp) {
         status = "POINT FINGER - Cursor";
@@ -102,7 +108,12 @@ class _CameraScreenState extends State<CameraScreen> {
             _lastSwipeX = palmX;
             _lastSwipeTime = now;
           } else if (elapsed >= 80 && movement.abs() >= 0.18) {
-            _swipeDirection = movement < 0 ? "LEFT" : "RIGHT";
+             _swipeDirection = movement < 0 ? "LEFT" : "RIGHT";
+            _menuIndex = movement < 0
+                ? (_menuIndex + 1) % _menuOptions.length
+                : (_menuIndex - 1 + _menuOptions.length) % _menuOptions.length;
+            menuChanged = true;
+            widget.onSwipe?.call(_swipeDirection);
             status = "SWIPE $_swipeDirection";
             _lastSwipeX = null;
             _lastSwipeTime = null;
@@ -112,8 +123,8 @@ class _CameraScreenState extends State<CameraScreen> {
         }
       }
     }
-    if (status != _gestureStatus || status == "POINT FINGER - Cursor" || status.startsWith("SWIPE ") || (status == "PINCH - Select" && !wasPinching)) {
-      setState(() => _gestureStatus = status);
+    if (menuChanged || status != _gestureStatus || status == "POINT FINGER - Cursor" || status.startsWith("SWIPE ") || (status == "PINCH - Select" && !wasPinching)) {
+      setState(() { _gestureStatus = status; });
     }
   }
 
@@ -309,7 +320,7 @@ class _CameraScreenState extends State<CameraScreen> {
                           Padding(
                             padding: const EdgeInsets.all(12),
                             child: Text(
-                              'Gesture: $_gestureStatus\nSelections: $_selectionCount\nHeard: $_heardWords',
+                              "SELECTED MENU: ${_menuOptions[_menuIndex]}\nGesture: $_gestureStatus\nSelections: $_selectionCount\nHeard: $_heardWords",
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 color: Colors.white,

@@ -3,7 +3,7 @@ workflows:
     name: JARVIS Android Build (Step 1)
     max_build_duration: 30
     environment:
-      flutter: stable
+      flutter: 3.38.0
       vars:
         # Future steps (Claude API key, etc.) will be added here as
         # SECURE environment variables inside the Codemagic dashboard -

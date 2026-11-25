@@ -29,6 +29,12 @@ class JarvisCommandService {
       return 'go_to_chat';
     }
 
+    if (text.contains('generate 3d model') ||
+        text.contains('create 3d model') ||
+        text.contains('make 3d model')) {
+      return 'generate_3d_model';
+    }
+
     if (text.contains('sleep mode')) {
       return 'sleep_mode';
     }

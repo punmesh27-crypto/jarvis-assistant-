@@ -1,3 +1,4 @@
+require("dotenv").config();
 
 const http = require("http");
 const { GoogleGenAI } = require("@google/genai");
@@ -64,6 +65,76 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     return res.end();
+  }
+
+
+  // JARVIS 3D model generation
+  if (req.method === "POST" && req.url === "/generate-3d") {
+    try {
+      if (!process.env.THREE_WS_TOKEN) {
+        res.writeHead(503);
+        return res.end(JSON.stringify({ error: "3D API token is not configured." }));
+      }
+
+      let body = "";
+      let size = 0;
+      for await (const chunk of req) {
+        size += chunk.length;
+        if (size > 10000) {
+          res.writeHead(413);
+          return res.end(JSON.stringify({ error: "Request too large." }));
+        }
+        body += chunk;
+      }
+
+      const data = JSON.parse(body);
+      if (typeof data.prompt !== "string" || !data.prompt.trim() || data.prompt.length > 2000) {
+        res.writeHead(400);
+        return res.end(JSON.stringify({ error: "A prompt of 1 to 2000 characters is required." }));
+      }
+
+      const upstream = await fetch("https://three.ws/api/3d/generate", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + process.env.THREE_WS_TOKEN,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ prompt: data.prompt.trim(), format: "glb" })
+      });
+
+      const result = await upstream.text();
+      res.writeHead(upstream.status);
+      return res.end(result);
+    } catch (error) {
+      console.error("3D generation error:", error.message);
+      res.writeHead(500);
+      return res.end(JSON.stringify({ error: "JARVIS could not generate the 3D model." }));
+    }
+  }
+
+  // JARVIS 3D generation status
+  if (req.method === "GET" && req.url.startsWith("/generate-3d/status?")) {
+    try {
+      const requestUrl = new URL(req.url, "http://localhost");
+      const job = requestUrl.searchParams.get("job");
+
+      if (!job || job.length > 4096) {
+        res.writeHead(400);
+        return res.end(JSON.stringify({ error: "Valid job token is required." }));
+      }
+
+      const upstreamUrl = new URL("https://three.ws/api/3d/generate");
+      upstreamUrl.searchParams.set("job", job);
+
+      const upstream = await fetch(upstreamUrl);
+      const result = await upstream.text();
+      res.writeHead(upstream.status);
+      return res.end(result);
+    } catch (error) {
+      console.error("3D status error:", error.message);
+      res.writeHead(500);
+      return res.end(JSON.stringify({ error: "Could not check 3D model status." }));
+    }
   }
 
   if (req.method === "GET") {
